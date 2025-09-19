@@ -1,0 +1,63 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Station {
+  id String @id @default(uuid())
+  metro_route_id String
+  isTransfer Boolean @default(false)
+  station_order Int @default(0)
+  metroRoute   MetroRoute @relation(fields: [metro_route_id], references: [id])
+  transferFrom Transfers[] @relation("transferFrom")
+  transferTo Transfers[] @relation("transferTo")
+  translation StationTranslation[]
+  @@map("station")
+}
+
+model MetroRoute {
+  id String @id @default(uuid())
+  name String
+  stations Station[]
+  translation RouteTranslation[]
+  @@map("metro_route")
+}
+
+model Transfers {
+  id String @id @default(uuid())
+  from_station_id String
+  to_station_id String
+  fromStation Station @relation("transferFrom", fields: [from_station_id], references: [id])
+  toStation Station @relation("transferTo", fields: [to_station_id], references: [id])
+  @@map("transfers")
+}
+
+model StationTranslation {
+  id String @id @default(uuid())
+  station_id String
+  lang String @default("uz")
+  name String
+
+  station Station @relation(fields: [station_id], references: [id])
+  @@map("station_translation")
+}
+
+model RouteTranslation {
+  id String @id @default(uuid())
+  metro_route_id String
+  lang String @default("uz")
+  name String
+
+  route MetroRoute @relation(fields: [metro_route_id], references: [id])
+  @@map("metro_route_translation")
+}
