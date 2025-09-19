@@ -11,7 +11,7 @@ export class MetroRepository {
         translation: {
           where: { lang },
         },
-        Stations: {
+        stations: {
           include: {
             translation: {
               where: { lang },
@@ -26,6 +26,37 @@ export class MetroRepository {
 
     return routes;
   }
+
+  public async getStationsByIds(ids: string[], lang: Language) {
+    return this.prisma.station.findMany({
+        where: {
+            id: {
+                in: ids,
+            },
+        },
+        include: {
+            translation: {
+                where: {
+                    lang: lang,
+                },
+            },
+            transferFrom: {
+                include: {
+                    toStation: {
+                        include: {
+                            translation: {
+                                where: {
+                                    lang: lang,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+            transferTo: true,
+        },
+    });
+}
 
   public async findStation(station_id: string, lang: Language) {
     return this.prisma.station.findUnique({
@@ -63,7 +94,7 @@ export class MetroRepository {
   public async findRoutes() {
     return this.prisma.metroRoute.findMany({
       include: {
-        Stations: {
+        stations: {
           include: {
             transferFrom: true,
             transferTo: true,

@@ -38,9 +38,7 @@ export const yunusobodStations = [
   { name_uz: "Bodomzor", name_ru: "Бодомзор", isTransfer: false },
   { name_uz: "Minor", name_ru: "Минор", isTransfer: false },
   { name_uz: "Abdulla Qodiriy", name_ru: "Абдулла Кодири", isTransfer: false },
-  { name_uz: "Mustaqillik maydoni", name_ru: "Мустакиллик майдони", isTransfer: false },
   { name_uz: "Yunus Rajabiy", name_ru: "Юнус Раджаби", isTransfer: true },
-  { name_uz: "Amir Temur xiyoboni", name_ru: "Амир Темур хиёбони", isTransfer: true },
   { name_uz: "Ming O'rik", name_ru: "Минг Урик", isTransfer: true },
 ];
 

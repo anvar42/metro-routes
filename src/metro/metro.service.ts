@@ -13,7 +13,7 @@ export class MetroService {
     return routeStations.map((route) => ({
       id: route.id,
       name: route.translation[0]?.name || route.name,
-      stations: route.Stations.map((station) => ({
+      stations: route.stations.map((station) => ({
         id: station.id,
         name: station.translation[0]?.name,
         isTransfer: station.isTransfer,
@@ -46,6 +46,28 @@ export class MetroService {
     if (!path || path.length === 0) {
       throw new NotFoundException('Path not found between stations');
     }
+
+    const pathStations = await this.metroRepository.getStationsByIds(path, lang);
+
+    const directions: DirectionResponse[] = pathStations.map(
+      (station, index) => {
+        const isTransfer = station.transferFrom.length > 0;
+        const forwardStationName = isTransfer
+          ? station.transferFrom[0]?.toStation.translation[0]?.name || ''
+          : '';
+
+        return {
+          id: station.id,
+          name: station.translation[0]?.name,
+          forwarding: isTransfer,
+          forward: forwardStationName,
+          in: index === 0,
+          out: index === pathStations.length - 1,
+        };
+      },
+    );
+
+    return { directions };
   }
 
   private async findSameRoute(from_id: string, to_id: string, lang: Language) {
@@ -118,33 +140,82 @@ export class MetroService {
 
   private async buildGraph(): Promise<Map<string, string[]>> {
     const graph = new Map<string, string[]>();
-
     const routes = await this.metroRepository.findRoutes();
 
     for (const route of routes) {
-      const stations = route.Stations;
+      const stations = route.stations;
 
       for (let i = 0; i < stations.length; i++) {
         const station = stations[i];
-        const neighbors: string[] = [];
+        const stationId = station.id;
+
+        if (!graph.has(stationId)) {
+          graph.set(stationId, []);
+        }
 
         if (i > 0) {
-          neighbors.push(stations[i - 1].id);
+          const prevStationId = stations[i - 1].id;
+          const stationNeighbors = graph.get(stationId)!;
+          const prevStationNeighbors = graph.has(prevStationId)
+            ? graph.get(prevStationId)!
+            : [];
+
+          if (!stationNeighbors.includes(prevStationId)) {
+            stationNeighbors.push(prevStationId);
+          }
+          if (!prevStationNeighbors.includes(stationId)) {
+            prevStationNeighbors.push(stationId);
+          }
+          graph.set(prevStationId, prevStationNeighbors);
         }
 
         if (i < stations.length - 1) {
-          neighbors.push(stations[i + 1].id);
+          const nextStationId = stations[i + 1].id;
+          const stationNeighbors = graph.get(stationId)!;
+          const nextStationNeighbors = graph.has(nextStationId)
+            ? graph.get(nextStationId)!
+            : [];
+
+          if (!stationNeighbors.includes(nextStationId)) {
+            stationNeighbors.push(nextStationId);
+          }
+          if (!nextStationNeighbors.includes(stationId)) {
+            nextStationNeighbors.push(stationId);
+          }
+          graph.set(nextStationId, nextStationNeighbors);
         }
 
         for (const transfer of station.transferFrom) {
-          neighbors.push(transfer.to_station_id);
+          const toStationId = transfer.to_station_id;
+          const stationNeighbors = graph.get(stationId)!;
+          const toStationNeighbors = graph.has(toStationId)
+            ? graph.get(toStationId)!
+            : [];
+
+          if (!stationNeighbors.includes(toStationId)) {
+            stationNeighbors.push(toStationId);
+          }
+          if (!toStationNeighbors.includes(stationId)) {
+            toStationNeighbors.push(stationId);
+          }
+          graph.set(toStationId, toStationNeighbors);
         }
 
         for (const transfer of station.transferTo) {
-          neighbors.push(transfer.from_station_id);
-        }
+          const fromStationId = transfer.from_station_id;
+          const stationNeighbors = graph.get(stationId)!;
+          const fromStationNeighbors = graph.has(fromStationId)
+            ? graph.get(fromStationId)!
+            : [];
 
-        graph.set(station.id, neighbors);
+          if (!stationNeighbors.includes(fromStationId)) {
+            stationNeighbors.push(fromStationId);
+          }
+          if (!fromStationNeighbors.includes(stationId)) {
+            fromStationNeighbors.push(stationId);
+          }
+          graph.set(fromStationId, fromStationNeighbors);
+        }
       }
     }
     return graph;
